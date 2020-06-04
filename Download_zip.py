@@ -36,65 +36,78 @@ def getFileName(path,N,special):
     for i in f_list:
         if os.path.splitext(i)[1] == special:
             N.append(i)
+#####
+            
 
-#os.chdir("/Users/gumenghan/Desktop/Spyder programs/try/Data_Project")
-cwd = os.getcwd()
-options = Options()
-options.set_preference("browser.download.folderList",2)
-options.set_preference("browser.download.manager.showWhenStarting", False)
-options.set_preference("browser.download.dir",cwd)
-options.set_preference("browser.helperApps.neverAsk.saveToDisk", "application/octet-stream,application/vnd.ms-excel")
-driver = webdriver.Firefox(firefox_options=options, executable_path = '/usr/local/bin/geckodriver')
+    
 
 
-driver.maximize_window()
-driver.get('https://www.sec.gov/dera/data/financial-statement-data-sets.html')
-##################  For Analysis of the Web Page  ##################
-#pageSource = driver.page_source
-ac=ActionChains(driver)
-#  Just a test for downloading one file  #
-driver.find_element_by_css_selector("a[href*='.zip']").click()
-N=[]
-getFileName(cwd, N,'.zip')
-for item in N:
-    un_zip(item)
-DIR=[]
-getFileName(cwd, DIR,'.zip_files')
-for item in DIR:
-    #print(item)
-    p=item+'/tag.txt'
-    f=open(p)
-    lines=f.readlines()
-    for l in lines:
-        print(l)
+if __name__=="__main__": 
+    
+    target_web='https://www.sec.gov/dera/data/financial-statement-data-sets.html'
+    cwd = os.getcwd()
+    options = Options()
+    
+    options.set_preference("browser.download.folderList",2)
+    options.set_preference("browser.download.manager.showWhenStarting", False)
+    options.set_preference("browser.download.dir",cwd)
+    options.set_preference("browser.helperApps.neverAsk.saveToDisk", "application/zip")
+    driver = webdriver.Firefox(firefox_options=options, executable_path = '/usr/local/bin/geckodriver')
     
     
-##################  For Downloading Multiple Files   ####################
-#element=driver.find_element_by_css_selector("a[href*='.zip']")
-#for i in range(0,len(element)):
-#    element[i].click()
+    driver.maximize_window()
+    
+    driver.get(target_web)
+    
+    #driver.get('https://www.sec.gov/dera/data/financial-statement-data-sets.html')
+    ##################  For Analysis of the Web Page  ##################
+    #pageSource = driver.page_source
+    ac=ActionChains(driver)
+    #  Just a test for downloading one file  #
+    driver.find_element_by_css_selector("a[href*='.zip']").click()
+    
+    
+    ##################  For Downloading Multiple Files   ####################
+    #element=driver.find_element_by_css_selector("a[href*='.zip']")
+    #for i in range(0,len(element)):
+    #    element[i].click()
+    
+    
+    
+    ##################  Create Database 'gmh1.db'  ####################
+    ##################  Create table 'tag'  ####################
+    cx = sqlite3.connect('./gmh1.db')
+    cu = cx.cursor()
+    cu.execute('''CREATE TABLE TAG
+                 (tag, version, custom, abstract, datatype, iord, crdr, tlabel, doc)''')
+    N=[]
+    getFileName(cwd, N,'.zip')
+    for item in N:
+        un_zip(item)
+    DIR=[]
+    getFileName(cwd, DIR,'.zip_files')
+    for item in DIR:
+        #print(item)
+        p=item+'/tag.txt'
+        f=open(p)
+        content=f.read()
+        l=content.split('\n')
+        for title in l:
+            t=title.split('\t')
+            if len(t)==9:
+                cu.execute("INSERT INTO TAG(tag, version, custom, abstract, datatype, iord, crdr, tlabel, doc) VALUES (?,?,?,?,?,?,?,?,?)",(t[0],t[1],t[2],t[3],t[4],t[5],t[6],t[7],t[8]))
+        
+    cx.commit()
+    
+    with cx:
+        cu.execute("SELECT * FROM TAG")
+        print(cu.fetchall())
+    driver.quit()
+#with cx:
+    #cu.execute("SELECT * FROM TAG")
+    #print(cu.fetchall())
 
-f=open('/Users/gumenghan/Desktop/Spyder programs/try//Data_Project/2020q1.zip_files/tag.txt')
-content=f.read()
-content.head()
-l=content.split('\n')
-k=0
-for title in l:
-    k=k+1
-    t=title.split('\t')
-    print((t))
-    if k==100:
-        break
 
-segments=[]
-for item in l:
-    x=item.split('\t')
-    for i in x:
-        segments.append(i)
-segments
 
-cx = sqlite3.connect('./train.db')
-cu = cx.cursor()
-cu.execute('create table if not exists gmh1 (id integer primary key,name text)')
 
 
