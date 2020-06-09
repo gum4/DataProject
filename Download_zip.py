@@ -16,8 +16,9 @@ import os
 import sqlite3
 import zipfile
 from selenium.webdriver.firefox.options import Options
-
-
+from collections import defaultdict
+import operator
+import re
     
 def un_zip(file_name):
     """unzip zip file"""
@@ -97,15 +98,26 @@ if __name__=="__main__":
             if len(t)==9:
                 cu.execute("INSERT INTO TAG(tag, version, custom, abstract, datatype, iord, crdr, tlabel, doc) VALUES (?,?,?,?,?,?,?,?,?)",(t[0],t[1],t[2],t[3],t[4],t[5],t[6],t[7],t[8]))
         
-    cx.commit()
     
-    with cx:
-        cu.execute("SELECT * FROM TAG")
-        print(cu.fetchall())
+    cu.execute('SELECT doc FROM TAG ')
+    cx.commit()
+    res=cu.fetchall()
+    stor=[]
+    for i in range(1,len(res)):
+        row=re.sub('[^\w+]', "\t", str(res[i]))
+        stor.append(row.split('\t'))
+    word_frequency=defaultdict(int)
+    for row in stor:
+        for i in row:
+            word_frequency[i]+=1
+    word_sort=sorted(word_frequency.items(),key=operator.itemgetter(1),reverse=True) #根据词频降序排序
+    print(word_sort)
+    #with cx:
+        #cu.execute("SELECT * FROM TAG")
+        #print(cu.fetchall())
     driver.quit()
-#with cx:
-    #cu.execute("SELECT * FROM TAG")
-    #print(cu.fetchall())
+
+
 
 
 
