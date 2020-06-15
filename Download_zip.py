@@ -19,7 +19,49 @@ from selenium.webdriver.firefox.options import Options
 from collections import defaultdict
 import operator
 import re
+import torch
+import torchtext.vocab as vocab
+import numpy
+import re
+from collections import defaultdict
+import operator
+import itertools
+from functools import reduce
+import random
+import math
+def knn(W, x, k):
+    #matmul 高维矩阵相乘
+    #设置1e-10增加精确度
+    cos = torch.matmul(W, x.view((-1,))) / ((torch.sum(W * W, dim=1) + 1e-10).sqrt() * torch.sum(x * x).sqrt())
+    #topk 返回k个最大值
+    _, topk = torch.topk(cos, k=k)
+    topk = topk.cpu().numpy()
+    return topk, [cos[i].item() for i in topk]
+
+
+def get_similar_tokens(query, k, embed):
+    topk, cos = knn(embed.vectors,embed.vectors[embed.stoi[query]], k+1)
+    #zip 将对象打包，成为pair
+    sim=[]
+    for i, c in zip(topk[1:], cos[1:]): 
+        #print('similarity=%.3f: %s' % (c, (embed.itos[i])))
+        sim.append(embed.itos[i])
+    return sim
+
+#return the similarity of two words
+def similar(W,x,embed):
+    t1=embed.vectors[glove.stoi[W]]
+    t2=embed.vectors[glove.stoi[x]]
+    cos=sum(t1.mul(t2))/(sum(t1.mul(t1)).sqrt()*sum(t2.mul(t2)).sqrt())
     
+    return cos
+
+
+
+def download_glove(cache_dir):
+    glove = vocab.GloVe(name='6B', dim=50, cache=cache_dir)
+    return glove
+
 def un_zip(file_name):
     """unzip zip file"""
     zip_file = zipfile.ZipFile(file_name)
@@ -40,7 +82,50 @@ def getFileName(path,N,special):
 #####
             
 
+def mean_similar(x,target,glove):
+    s=0
+    for item in target:
+        s=s+similar(item,x,glove)
+    s=s/len(target)
+    return s
+
+def list_any_two_mul(mylist,glove):
+     n=len(mylist)
+     num = 1
+     temp = []
+     for i in mylist[:-1]:
+         temp.append([similar(i,j,glove) for j in mylist[num:]])
+         num = num + 1
+     # 把多个列表变成只有一个列表
+     results = [y for x in temp for y in x]
+     return sum(results)/(n*(n-1)/math.log(n))
+
+def hier_cluster (x,WORDS,glove,target):
+        #print(similar('finance', item, glove))
     
+    SS=sorted(WORDS, key=lambda x: mean_similar(x, target, glove),reverse=True)
+    SS=list(SS)
+    return SS[x:],SS[:x],list_any_two_mul(SS[:x],glove)
+
+
+
+# 从WORDS词汇库里选取100个金融词汇选取若干个词汇，构成金融词汇库，使得库内总相似度最大
+def construct_finance_database(x,target,WORDS,glove,limit):
+    tmp=WORDS
+    old_simi=0
+    WORDS,chosen,simi=hier_cluster(x, WORDS, glove, target)
+    simi=(int)(simi)
+    stor=chosen
+    while simi>old_simi & len(stor)<limit:
+        old_simi=simi
+        tmp,chosen,simi=hier_cluster(x, tmp, glove, stor)
+        simi=(int)(simi)
+        stor=stor+chosen
+        stor=list(set(stor))
+        print(stor)
+    return stor
+
+
 
 
 if __name__=="__main__": 
@@ -111,11 +196,49 @@ if __name__=="__main__":
         for i in row:
             word_frequency[i]+=1
     word_sort=sorted(word_frequency.items(),key=operator.itemgetter(1),reverse=True) #根据词频降序排序
-    print(word_sort)
+    #选取出现次数最多的前一百个单词
+    driver.quit()
+    
+    # if you have not downloaded, uncomment the following line
+    cache_dir = "/Users/gumenghan/Datasets/tag1"
+    download_glove(cache_dir)
+    glove=download_glove(cache_dir)
+    
+    
+    WORDS=[]
+    count=0
+    for item in word_sort:
+        
+        if (len(item[0])>=4):
+            if (item[0] in list(glove.stoi)):
+                
+                WORDS.append(item[0].lower())
+                count=count+1
+        if (count==1000):
+            break
+
+    WORDS=list(set(WORDS))
+    tmp=WORDS
+    target=['finance']
+    optimal=0
+    index_chosen=0
+    for i in range(2,21):
+        start=time.time()
+        GET=construct_finance_database(i,target,WORDS,glove,100)
+        end=time.time()
+        print(end-start)
+        if len(GET)/(end-start)>optimal:
+            optimal=len(GET)/(end-start)
+            index_chosen=i
+    
+    index_chosen
+    construct_finance_database(index_chosen,target,WORDS,glove,100)
+    #查看glove全部属性
+    #dir(glove)
     #with cx:
         #cu.execute("SELECT * FROM TAG")
         #print(cu.fetchall())
-    driver.quit()
+    
 
 
 
