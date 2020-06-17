@@ -23,10 +23,7 @@ import torch
 import torchtext.vocab as vocab
 import numpy
 import re
-from collections import defaultdict
-import operator
 import itertools
-from functools import reduce
 import random
 import math
 def knn(W, x, k):
@@ -89,6 +86,7 @@ def mean_similar(x,target,glove):
     s=s/len(target)
     return s
 
+#计算选取的词库内部总相似度(两两相似度之和)
 def list_any_two_mul(mylist,glove):
      n=len(mylist)
      num = 1
@@ -98,31 +96,32 @@ def list_any_two_mul(mylist,glove):
          num = num + 1
      # 把多个列表变成只有一个列表
      results = [y for x in temp for y in x]
-     return sum(results)/(n*(n-1)/math.log(n))
+     #此处灿开kmeans算法k的取值
+     return sum(results)/(n*(n-1)/math.sqrt(n))
 
-def hier_cluster (x,WORDS,glove,target):
+def hier_cluster (n,WORDS,glove,target):
         #print(similar('finance', item, glove))
     
     SS=sorted(WORDS, key=lambda x: mean_similar(x, target, glove),reverse=True)
     SS=list(SS)
-    return SS[x:],SS[:x],list_any_two_mul(SS[:x],glove)
+    return SS[n:],SS[:n],list_any_two_mul(SS[:n],glove)
 
 
 
 # 从WORDS词汇库里选取100个金融词汇选取若干个词汇，构成金融词汇库，使得库内总相似度最大
-def construct_finance_database(x,target,WORDS,glove,limit):
+def construct_finance_database(n,target,WORDS,glove,limit):
     tmp=WORDS
     old_simi=0
-    WORDS,chosen,simi=hier_cluster(x, WORDS, glove, target)
+    tmp,chosen,simi=hier_cluster(n, tmp, glove, target)
     simi=(int)(simi)
     stor=chosen
     while simi>old_simi & len(stor)<limit:
         old_simi=simi
-        tmp,chosen,simi=hier_cluster(x, tmp, glove, stor)
+        tmp,chosen,simi=hier_cluster(n, tmp, glove, stor)
         simi=(int)(simi)
         stor=stor+chosen
         stor=list(set(stor))
-        print(stor)
+        #print(stor)
     return stor
 
 
@@ -218,21 +217,25 @@ if __name__=="__main__":
             break
 
     WORDS=list(set(WORDS))
+    FINAL_OUTPUT=[]
     tmp=WORDS
     target=['finance']
     optimal=0
     index_chosen=0
-    for i in range(2,21):
+    for i in range(2,10):
         start=time.time()
         GET=construct_finance_database(i,target,WORDS,glove,100)
+        FINAL_OUTPUT.append(GET)
         end=time.time()
-        print(end-start)
+        #print(end-start)
         if len(GET)/(end-start)>optimal:
             optimal=len(GET)/(end-start)
             index_chosen=i
     
     index_chosen
-    construct_finance_database(index_chosen,target,WORDS,glove,100)
+    FINAL_OUTPUT[index_chosen-2]
+    
+    
     #查看glove全部属性
     #dir(glove)
     #with cx:
