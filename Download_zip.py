@@ -9,9 +9,6 @@ Created on Wed May 13 00:33:21 2020
 import time
 from selenium import webdriver
 from selenium.webdriver import ActionChains
-from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
-from selenium.webdriver.common.keys import Keys
-import pyautogui
 import os
 import sqlite3
 import zipfile
@@ -21,11 +18,11 @@ import operator
 import re
 import torch
 import torchtext.vocab as vocab
-import numpy
-import re
-import itertools
-import random
 import math
+import torch.nn as nn
+import torch.nn.functional as F #激励函数
+import torch.utils.data as Data
+
 def knn(W, x, k):
     #matmul 高维矩阵相乘
     #设置1e-10增加精确度
@@ -78,7 +75,7 @@ def getFileName(path,N,special):
             N.append(i)
 #####
             
-
+#计算x和target集合里元素的相似度的均值
 def mean_similar(x,target,glove):
     s=0
     for item in target:
@@ -109,6 +106,7 @@ def hier_cluster (n,WORDS,glove,target):
 
 
 # 从WORDS词汇库里选取100个金融词汇选取若干个词汇，构成金融词汇库，使得库内总相似度最大
+# 神经网络算法
 def construct_finance_database(n,target,WORDS,glove,limit):
     tmp=WORDS
     old_simi=0
@@ -125,10 +123,38 @@ def construct_finance_database(n,target,WORDS,glove,limit):
     return stor
 
 
+class Encoder:
+   Finance_words=['investment','foreign','banking','fund','government','treasury']
+   def __init__(self, vector):
+      self.v=vector
+      self.values=vector
+      self.ones=[]
+      self.zeroes=[]
+   def settle(self):
+      for i in range(0,len(self.v)): 
+          if self.v[i]==1:
+              self.ones.append(Encoder.Finance_words[i])
+          else:
+              self.zeroes.append(i)
+   def learn(self):
+       if len(self.ones)>0:
+           for item1 in self.zeroes:
+               cal=mean_similar(Encoder.Finance_words[item1], self.ones, glove)
+               self.values[item1]=cal
+   def clean(self):
+       for item in self.values:
+           item=float(item)
 
+       
+       
 
 if __name__=="__main__": 
     
+    
+    
+    #############################################################################
+    #####     PART 1     ######
+    #############################################################################
     target_web='https://www.sec.gov/dera/data/financial-statement-data-sets.html'
     cwd = os.getcwd()
     options = Options()
@@ -187,9 +213,12 @@ if __name__=="__main__":
     cx.commit()
     res=cu.fetchall()
     stor=[]
+    Jarcoob=[]
     for i in range(1,len(res)):
         row=re.sub('[^\w+]', "\t", str(res[i]))
         stor.append(row.split('\t'))
+        
+    
     word_frequency=defaultdict(int)
     for row in stor:
         for i in row:
@@ -219,7 +248,9 @@ if __name__=="__main__":
     WORDS=list(set(WORDS))
     FINAL_OUTPUT=[]
     tmp=WORDS
+    ##################
     target=['finance']
+    ##################
     optimal=0
     index_chosen=0
     for i in range(2,10):
@@ -232,10 +263,77 @@ if __name__=="__main__":
             optimal=len(GET)/(end-start)
             index_chosen=i
     
-    index_chosen
+    #index_chosen
     FINAL_OUTPUT[index_chosen-2]
     
+    finance_words=['investment','foreign','banking','fund','government','treasury']
     
+    #############################################################################
+    #####     PART 2     ######
+    #############################################################################
+    
+    
+    
+    cu.execute('SELECT version FROM TAG ')
+    res_version=cu.fetchall()
+    cu.execute('SELECT custom FROM TAG ')
+    res_custom=cu.fetchall()
+    cu.execute('SELECT abstract FROM TAG ')
+    res_abstract=cu.fetchall()
+    cu.execute('SELECT datatype FROM TAG ')
+    res_datatype=cu.fetchall()
+    cu.execute('SELECT iord FROM TAG ')
+    res_iord=cu.fetchall()
+    cu.execute('SELECT crdr FROM TAG ')
+    res_crdr=cu.fetchall()
+    cx.commit()
+    
+    res_version_unique=list(set(res_version))
+    
+    #res_version和res_datatype 不用做Jarcard和clusterin，但需要保留
+    #['investment',
+    #'foreign',
+    #'banking',
+    #'fund',
+    #'government',
+    #'treasury']
+    Jarcoob=[]
+    for i in range(1,len(res)):
+        row=re.sub('[^\w+]', "\t", str(res[i]))
+        
+        line=[]
+        for item in finance_words:
+            if item in row.split('\t'):
+                line.append(1)
+            else:
+                line.append(0)
+                
+        line=list(line)
+        #print(len(line))
+        #print(len(finance_words))
+        if len(line)==len(finance_words):
+            Ec=Encoder(line);
+            Ec.settle()
+            Ec.learn()
+            Ec.clean()
+            Jarcoob.append(Ec.values)
+            print(Ec.values)
+        else:
+            line=[0 for i in range(len(finance_words)) ]
+            Jarcoob.append(line)
+        
+    Jarcoob
+    #version: an identifier for the taxonomy; 
+    #custom: 1 if tag is custom (version=adsh), 0 if it is standard
+    #abstract: 1 if the tag is not used to represent a numeric fact
+    #datatype: If abstract=1, then NULL, otherwise the data type (e.g., monetary) for the tag
+    #Iord: If abstract=1, then NULL; otherwise, 
+          #“I” if the value is a point-in time, or “D” if the value is a duration. 
+    #crdr: If datatype = monetary, then the tag’s natural accounting balance (debit or credit); 
+          #if not defined, then NULL. 
+    
+    #version 和 datatype 需要分类处理
+    #custom,abstract,iord,crdr 只是0或者1
     #查看glove全部属性
     #dir(glove)
     #with cx:
