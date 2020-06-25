@@ -22,7 +22,17 @@ import math
 import torch.nn as nn
 import torch.nn.functional as F #激励函数
 import torch.utils.data as Data
-import pandas as pd
+import numpy as np
+
+from sklearn.datasets import make_blobs
+import matplotlib.pyplot as plt
+
+
+
+from scipy.cluster.hierarchy import fclusterdata,dendrogram,linkage
+
+
+
 def knn(W, x, k):
     #matmul 高维矩阵相乘
     #设置1e-10增加精确度
@@ -122,7 +132,7 @@ def construct_finance_database(n,target,WORDS,glove,limit):
         #print(stor)
     return stor
 
-
+########################   以下没有用到   ############################
 class Encoder:
    Finance_words=['investment','foreign','banking','fund','government','treasury']
    def __init__(self, vector):
@@ -145,9 +155,63 @@ class Encoder:
        for item in self.values:
            item=float(item)
 
-       
-       
 
+def mydist(p1, p2):
+    union=list(p1 | p2)
+    cross=list(p1 & p2)
+    num1=cross.count(True)
+    num2=union.count(True)
+    if num2==0:
+        return 0
+    return 1-num1/num2
+
+
+def hierarchial_select (J):
+
+    min_dis=2
+    index1=-1
+    index2=-1
+    result=[]
+    for i in range(0,len(J)):
+        remain=np.delete(J,i,axis=0)
+        select=sorted(remain, key=lambda x: mydist(x,J[i]),reverse=False)
+        if mydist(select[0],J[i])<min_dis:
+            min_dis=mydist(select[0],J[i])
+            index1=i
+            #all(axis==1)表示某一行的所有列
+            index2=np.where((J == select[0]).all(axis=1))
+            result=select[0]
+    cluster=np.array([J[index1],J[(int)(index2[0])]])
+    J1=np.delete(J,[index1,(int)(index2[0])],axis=0)
+    J2=np.insert(J1, 0, values=cluster_mean(cluster), axis=0)
+    J2=np.unique(J2, axis=0)
+    #cluster表示每次选出的两个，J1表示除去选出的两类剩下的，J2表示J1加上了一个mean_cluster
+    return J[index1],J[(int)(index2[0])],J2,cluster_mean(cluster)
+
+
+def cluster_mean(cluster):
+    res=[]
+    for i in range(cluster.shape[1]):
+        counts = np.bincount(cluster[:,i])
+        res.append(np.argmax(counts))
+    return res
+
+#融合过程，每一次iteration选出来的两类的mean，加紧j，unique后再被选出来，只需要看该组合在初始的J中的位置来选即可
+#即选取某一类的组合等价于从原来的J中选值和mean相等的元素
+def hierarchial_clustering (J):
+    j=J
+    classes=[]
+    num_of_class=len(J)
+    while num_of_class>1:
+        c1,c2,j,m=hierarchial_select(j)
+        classes.append([(int)(np.where((J == c1).all(axis=1))[0]),(int)(np.where((J == c2).all(axis=1))[0]),(int)(np.where((J == m).all(axis=1))[0])])
+        num_of_class=num_of_class-1
+    
+    return classes
+
+
+########################   以上没有用到   ############################
+    
 if __name__=="__main__": 
     
     
@@ -268,6 +332,7 @@ if __name__=="__main__":
     #FINAL_OUTPUT[index_chosen-2]
     
     finance_words=FINAL_OUTPUT[index_chosen-2]
+    finance_words
     
     #############################################################################
     #####     PART 2     ######
@@ -304,15 +369,16 @@ if __name__=="__main__":
         row=re.sub('[^\w+]', "\t", str(res[i]))
         
         line=[]
-        line.append(res_custom[i])
-        line.append(res_abstract[i])
-        line.append(res_iord[i])
-        line.append(res_crdr[i])
+        line.append(True if res_custom[i]==('1',) else False)
+        line.append(True if res_abstract[i]==('1',) else False)
+        # point-in and credit is 1 
+        line.append(True if res_iord[i]=='I' else False)
+        line.append(True if res_crdr[i]=='C' else False)
         for item in finance_words:
             if item in row.split('\t'):
-                line.append(1)
+                line.append(True)
             else:
-                line.append(0)
+                line.append(False)
                 
         line=list(line)
         Jarcoob.append(line)
@@ -326,9 +392,12 @@ if __name__=="__main__":
         #else:
             #line=[0 for i in range(len(finance_words)) ]
             #Jarcoob.append(line)
-        
-    pd1=pd.DataFrame(Jarcoob,columns=['1','2','3','4','5','6','7','8','9','10','11','12'])
-    print(pd1)
+
+    #pd1=pd.DataFrame(Jarcoob,columns=['custom','abstract','iord','crdr','finance','investment','financial','foreign','banking','fund','government','treasury'])
+    J=np.array(Jarcoob)
+    unique_J=np.unique(J, axis=0)
+    hierarchial_clustering(unique_J)
+    #pd1.drop([1,2,3,4], axis=0)
     #version: an identifier for the taxonomy; 
     #custom: 1 if tag is custom (version=adsh), 0 if it is standard
     #abstract: 1 if the tag is not used to represent a numeric fact
@@ -348,8 +417,13 @@ if __name__=="__main__":
     
 
 
+    #############################################################################
+    #####     PART 3     ######
+    #############################################################################
+    
+    
 
-
-
-
-
+    
+    # hierarchial 每次一个点扩充最近的十个点，提高效率
+    
+    
