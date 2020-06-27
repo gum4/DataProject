@@ -17,3 +17,6 @@ The user can choose how many words at most to find, the algorithm will generate 
   and output the 'finance' related words
 
 (study rate refers to how many words to be added in each iteration)
+
+
+Download_zip.py has already realized hierarchical clustering without using any python packages
