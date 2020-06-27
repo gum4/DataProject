@@ -19,17 +19,9 @@ import re
 import torch
 import torchtext.vocab as vocab
 import math
-import torch.nn as nn
-import torch.nn.functional as F #激励函数
-import torch.utils.data as Data
 import numpy as np
 
-from sklearn.datasets import make_blobs
-import matplotlib.pyplot as plt
 
-
-
-from scipy.cluster.hierarchy import fclusterdata,dendrogram,linkage
 
 
 
@@ -155,7 +147,8 @@ class Encoder:
        for item in self.values:
            item=float(item)
 
-
+########################   以上没有用到   ############################
+           
 def mydist(p1, p2):
     union=list(p1 | p2)
     cross=list(p1 & p2)
@@ -208,9 +201,50 @@ def hierarchial_clustering (J):
         num_of_class=num_of_class-1
     
     return classes
+#L[2]和L[0]或L[1]相等,自己消化
+#否则用L[2]在其他里面找
+def hierarchical (L):
+    RES=[]
+    R=[]
+    for row in L:
+        RES.append(row[:][0:2])
+    for i in range(0,len(L)):
+        #if (L[i][2]==L[i][0]) | (L[i][2]==L[i][1]):
+            #continue
+        TMP=RES
+        tmp=RES[i]
+        RES[i]=[]
+        inside=False
+        for item in RES:
+            if item==[]:
+                continue
+            if (item[0]==L[i][0]) | (item[1]==L[i][0]) | (item[0]==L[i][1]) | (item[1]==L[i][1]) | (item[0]==L[i][2]) | (item[1]==L[i][2]) :
+                inside=True
+                tmp.extend((list)(item))
+                #item.append(L[i][0:2])
+                item=[]
+        #RES[i]=tmp
+        R.append((list)((set)(tmp)))
+        if inside==False:
+            RES=TMP
+    
+    for i in range (0,len(R)):
+        if R[i]==[]:
+            continue
+        for j in range (0,len(R)):
+            if (R[j]==[]) | (i==j):
+                continue
+            set_c = set(R[i]) & set(R[j])
+            list_c = list(set_c)
+            if list_c!=[]:
+                
+                R[i].extend((list)(R[j]))
+                R[j]=[]
+        
+        R[i]=(list)((set)(R[i]))
+    R=[x for x in R if x]
+    return R
 
-
-########################   以上没有用到   ############################
     
 if __name__=="__main__": 
     
@@ -396,7 +430,11 @@ if __name__=="__main__":
     #pd1=pd.DataFrame(Jarcoob,columns=['custom','abstract','iord','crdr','finance','investment','financial','foreign','banking','fund','government','treasury'])
     J=np.array(Jarcoob)
     unique_J=np.unique(J, axis=0)
-    hierarchial_clustering(unique_J)
+    hier=hierarchial_clustering(unique_J)
+    hier
+    R=hierarchical(hier)
+
+
     #pd1.drop([1,2,3,4], axis=0)
     #version: an identifier for the taxonomy; 
     #custom: 1 if tag is custom (version=adsh), 0 if it is standard
@@ -422,7 +460,7 @@ if __name__=="__main__":
     #############################################################################
     
     
-
+    
     
     # hierarchial 每次一个点扩充最近的十个点，提高效率
     
