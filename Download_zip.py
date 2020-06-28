@@ -20,6 +20,7 @@ import torch
 import torchtext.vocab as vocab
 import math
 import numpy as np
+import sys
 
 
 
@@ -191,11 +192,11 @@ def cluster_mean(cluster):
 
 #融合过程，每一次iteration选出来的两类的mean，加紧j，unique后再被选出来，只需要看该组合在初始的J中的位置来选即可
 #即选取某一类的组合等价于从原来的J中选值和mean相等的元素
-def hierarchial_clustering (J):
+def hierarchial_clustering (J,n):
     j=J
     classes=[]
     num_of_class=len(J)
-    while num_of_class>1:
+    while num_of_class>n+1:
         c1,c2,j,m=hierarchial_select(j)
         classes.append([(int)(np.where((J == c1).all(axis=1))[0]),(int)(np.where((J == c2).all(axis=1))[0]),(int)(np.where((J == m).all(axis=1))[0])])
         num_of_class=num_of_class-1
@@ -429,12 +430,14 @@ if __name__=="__main__":
 
     #pd1=pd.DataFrame(Jarcoob,columns=['custom','abstract','iord','crdr','finance','investment','financial','foreign','banking','fund','government','treasury'])
     J=np.array(Jarcoob)
+    
     unique_J=np.unique(J, axis=0)
-    hier=hierarchial_clustering(unique_J)
-    hier
+    NUM_OF_CLASSES=4
+    hier=hierarchial_clustering(unique_J,NUM_OF_CLASSES)
     R=hierarchical(hier)
-
-
+    ################   R为最终分类   ################
+    print(R)
+    
     #pd1.drop([1,2,3,4], axis=0)
     #version: an identifier for the taxonomy; 
     #custom: 1 if tag is custom (version=adsh), 0 if it is standard
