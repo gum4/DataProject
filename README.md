@@ -20,3 +20,6 @@ The user can choose how many words at most to find, the algorithm will generate 
 
 
 Download_zip.py has already realized hierarchical clustering without using any python packages
+
+
+The test pdfs files are from:  https://www.txtgroup.com/investors/financial-reports/
