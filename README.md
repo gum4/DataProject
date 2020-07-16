@@ -27,7 +27,9 @@ The test pdfs files are from:  https://www.txtgroup.com/investors/financial-repo
 
 Command line:
   cd /Users/gumenghan/Desktop/Spyder programs/try/Data_Projects
+  
   python pdfTxt.py xxxx.pdf xxxx.txt
+  
   python final.py xxxx.txt
   
   currently at most use 1 zip from target_web due to CPU (With GPU, algorithms support as many pdfs as possible)
