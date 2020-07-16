@@ -23,3 +23,12 @@ Download_zip.py has already realized hierarchical clustering without using any p
 
 
 The test pdfs files are from:  https://www.txtgroup.com/investors/financial-reports/
+
+
+Command line:
+  cd /Users/gumenghan/Desktop/Spyder programs/try/Data_Projects
+  python pdfTxt.py xxxx.pdf xxxx.txt
+  python final.py xxxx.txt
+  
+  currently at most use 1 zip from target_web due to CPU (With GPU, algorithms support as many pdfs as possible)
+  use the top 1000 words that occurs the most frequently
